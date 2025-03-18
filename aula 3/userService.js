@@ -61,6 +61,29 @@ class userService {
     }
     return this.users
   }
-}
+
+   deleteUser(id){
+    try{
+      this.users = this.users.filter(user => user.id !== id);
+      this.SaveUsers();
+    }catch{
+     console.log('erro ao deletar usuário', erro)
+
+    }
+    }
+
+    putuser(id, nome, email, senha, endereco, telefone, cpf){
+      try{
+        const userIndex = this.users.findIndex(user => user.id === id);
+        if(userIndex === -1) throw new Error('Usuário não encontrado');
+        this.users[userIndex] = new User(id, nome, email, senha, endereco, telefone, cpf);
+        this.SaveUsers();
+        return this.users[userIndex];
+      }catch(erro){
+        console.log('erro ao atualizar usuário', erro);
+      }
+    }
+  }
+
 
 module.exports = new userService;
