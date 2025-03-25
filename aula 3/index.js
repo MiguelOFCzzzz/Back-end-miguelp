@@ -6,7 +6,7 @@ app.use(express.json()); // vou habilitar json no express
 
 // rota para criar usuario
 
-app.post("/users",(req,res) =>{
+app.post("/users", async (req,res) =>{
   const {nome, email, senha, endereco, telefone, cpf} = req.body;
   if (!nome || !email || !senha || !endereco || !telefone || !cpf) {
       return res.status(400).json
@@ -14,7 +14,7 @@ app.post("/users",(req,res) =>{
 
 
   }
-  const user = userService.addUser(nome,email,senha, endereco, telefone, cpf);
+  const user = await userService.addUser(nome,email,senha, endereco, telefone, cpf);
   res.status(200).json({user});
 })
 
@@ -42,9 +42,9 @@ app.get("/users", (req,res)=>{
 
 app.put("/users/:id", (req,res)=>{
   const id = parseInt(req.params.id);
-  const {nome, email, senha, endereco, telefone, cpf} = req.body;
+  const {nome, email, senhaCripto, endereco, telefone, cpf} = req.body;
   try{
-    const user = userService.putuser(id, nome, email, senha, endereco, telefone, cpf);
+    const user = userService.putuser(id, nome, email, senhaCripto, endereco, telefone, cpf);
     res.status(200).json(user);
   }catch(erro){
     res.status(400).json({error: erro.message});

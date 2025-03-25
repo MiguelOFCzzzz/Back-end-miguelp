@@ -1,6 +1,7 @@
 const User = require("./user");
 const path = require('path'); //modulo para manipular caminhos
 const fs = require('fs'); //modulo para manipular arquivos file system
+const bcrypt = require('bcryptjs'); //modulo para criptografar senha
 
 class userService {
   constructor() {
@@ -42,9 +43,10 @@ class userService {
 
 
 
-  addUser(id, nome, email, senha, endereco, telefone, cpf) {
+  async addUser(id, nome, email, senha, endereco, telefone, cpf) {
     try {
-      const user = new User(this.nextId++, nome, email, senha, endereco, telefone, cpf);
+      const senhaCripto = await bcrypt.hash(senha, 10);
+      const user = new User(this.nextId++, nome, email, senhaCripto, endereco, telefone, cpf);
       this.users.push(user);
       this.SaveUsers();
       return user;
@@ -61,29 +63,6 @@ class userService {
     }
     return this.users
   }
-
-   deleteUser(id){
-    try{
-      this.users = this.users.filter(user => user.id !== id);
-      this.SaveUsers();
-    }catch{
-     console.log('erro ao deletar usuário', erro)
-
-    }
-    }
-
-    putuser(id, nome, email, senha, endereco, telefone, cpf){
-      try{
-        const userIndex = this.users.findIndex(user => user.id === id);
-        if(userIndex === -1) throw new Error('Usuário não encontrado');
-        this.users[userIndex] = new User(id, nome, email, senha, endereco, telefone, cpf);
-        this.SaveUsers();
-        return this.users[userIndex];
-      }catch(erro){
-        console.log('erro ao atualizar usuário', erro);
-      }
-    }
-  }
-
+}
 
 module.exports = new userService;
