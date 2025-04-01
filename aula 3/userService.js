@@ -42,16 +42,39 @@ class userService {
 
 
 
-  addUser(id, nome, email, senha, endereco, telefone, cpf) {
+  async addUser(nome, email, senha, endereco, telefone, cpf,cpfexistente) {
     try {
-      const user = new User(this.nextId++, nome, email, senha, endereco, telefone, cpf);
+      cpfexistente = this.users.some(user => user.cpf === cpf);
+      if (cpfexistente) {
+        throw new Error('CPF já cadastrado');
+      }
+      const user = new User(this.nextId++, nome, email, senha, endereco, telefone, cpf,);
       this.users.push(user);
       this.SaveUsers();
       return user;
     } catch (erro) {
       console.log('erro ao adicionar um user', erro);
+      throw erro
+
     }
   }
+
+
+
+
+  async putUser(id, nome, email, senha, endereco, telefone, cpf) {
+    try {
+      const senhaCripto = await bcrypt.hash(senha, 10);
+      const userIndex = this.users.findIndex(user => user.id === id);
+      if (userIndex === -1) throw new Error('Usuário não encontrado');
+      this.users[userIndex] = new User(id, nome, email, senhaCripto, endereco, telefone, cpf);
+      this.SaveUsers();
+      return this.users[userIndex];
+    } catch (erro) {
+      console.log('erro ao atualizar usuário', erro);
+    }
+  }
+
 
   getUsers() {
     try {
