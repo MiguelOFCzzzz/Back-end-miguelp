@@ -1,6 +1,7 @@
 const User = require("./user");
 const path = require('path'); //modulo para manipular caminhos
 const fs = require('fs'); //modulo para manipular arquivos file system
+const bcrypt = require('bcryptjs'); //modulo para criptografar senha
 
 class userService {
   constructor() {
@@ -42,9 +43,9 @@ class userService {
 
 
 
-  async addUser(nome, email, senha, endereco, telefone, cpf,cpfexistente) {
+  async addUser(nome, email, senha, endereco, telefone, cpf, cpfexistente) {
     try {
-      cpfexistente = this.users.some(user => user.cpf === cpf);
+      const cpfexistente = this.users.some(user => user.cpf === cpf);
       if (cpfexistente) {
         throw new Error('CPF já cadastrado');
       }
@@ -64,16 +65,26 @@ class userService {
 
   async putUser(id, nome, email, senha, endereco, telefone, cpf) {
     try {
-      const senhaCripto = await bcrypt.hash(senha, 10);
       const userIndex = this.users.findIndex(user => user.id === id);
       if (userIndex === -1) throw new Error('Usuário não encontrado');
+  
+      const cpfexistente = this.users.some(user => user.cpf === cpf && user.id !== id);
+      if (cpfexistente) {
+        throw new Error('CPF já cadastrado');
+      }
+  
+      const senhaCripto = await bcrypt.hash(senha, 10);
+  
       this.users[userIndex] = new User(id, nome, email, senhaCripto, endereco, telefone, cpf);
       this.SaveUsers();
+  
       return this.users[userIndex];
     } catch (erro) {
-      console.log('erro ao atualizar usuário', erro);
+      console.log('Erro ao atualizar usuário', erro);
+      throw erro;
     }
   }
+  
 
 
   getUsers() {
