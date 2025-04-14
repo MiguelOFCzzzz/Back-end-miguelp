@@ -1,100 +1,104 @@
-const User = require("./user");
+const User = require("./user"); 
 const path = require('path'); //modulo para manipular caminhos
 const fs = require('fs'); //modulo para manipular arquivos file system
-const bcrypt = require('bcryptjs'); //modulo para criptografar senha
+const { json } = require("stream/consumers");
+const bcrypt = require('bcryptjs');
+const mysql = require("./mysql"); 
 
-class userService {
-  constructor() {
-    this.filePath = path.join(__dirname, 'user.json');
-    this.users = this.loadUsers(); //array para armazenar user
-    this.nextId = this.getNextId(); //contador para gerar id
-  }
 
-  loadUsers() {
-    try {
-      if (fs.existsSync(this.filePath)) { //verifica se o arquivo existe
-        const data = fs.readFileSync(this.filePath); //le o arquivo 
-        return JSON.parse(data); //transforma o item em objeto
-      }
-    } catch (erro) {
-      console.log('erro ao carregar arquivo', erro);
+class userService{
+    constructor(){
+        this.filePath = path.join(__dirname, 'user.json');
+        this.users = this.loadUsers(); //array para armazenar user
+        this.nextId = this.getNextId(); //contador para gerar id
     }
-    return [];
-  }
 
-  getNextId() {
-    try {
-      if (this.users.length === 0) return 1;
-      return Math.max(...this.users.map(user => user.id)) + 1;
-    } catch (erro) {
-      console.log('erro ao buscar proximo', erro);
+    loadUsers(){
+        try{           
+         if(fs.existsSync(this.filePath)){ //verifica se o arquivo existe
+            const data = fs.readFileSync(this.filePath); //le o arquivo 
+            return JSON.parse(data); //transforma o item em objeto
+            }
+        } catch (erro) {
+            console.log('erro ao carregar arquivo', erro);
+        }
+return [];
     }
-  }
 
-
-  SaveUsers() { //função para salvar os arquivos
-    try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.users));
-    } catch (erro) {
-      console.log('erro ao salvar o arquivo', erro);
+    getNextId(){
+        try{
+        if(this.users.length===0) return 1;
+        return Math.max(...this.users.map(user => user.id))+1;
+        } catch (erro) {
+            console.log('erro ao buscar proximo', erro);
+        }
     }
-  }
 
-
-
-
-  async addUser(nome, email, senha, endereco, telefone, cpf, cpfexistente) {
-    try {
-      const cpfexistente = this.users.some(user => user.cpf === cpf);
-      if (cpfexistente) {
-        throw new Error('CPF já cadastrado');
-      }
-      const user = new User(this.nextId++, nome, email, senha, endereco, telefone, cpf,);
-      this.users.push(user);
-      this.SaveUsers();
-      return user;
-    } catch (erro) {
-      console.log('erro ao adicionar um user', erro);
-      throw erro
-
+    saveUsers(){
+        try{
+        fs.writeFileSync(this.filePath, JSON.stringify(this.users));
+    }catch (erro) {
+        console.log('erro ao salvar arquivo')
     }
-  }
-
-
-
-
-  async putUser(id, nome, email, senha, endereco, telefone, cpf) {
-    try {
-      const userIndex = this.users.findIndex(user => user.id === id);
-      if (userIndex === -1) throw new Error('Usuário não encontrado');
-  
-      const cpfexistente = this.users.some(user => user.cpf === cpf && user.id !== id);
-      if (cpfexistente) {
-        throw new Error('CPF já cadastrado');
-      }
-  
-      const senhaCripto = await bcrypt.hash(senha, 10);
-  
-      this.users[userIndex] = new User(id, nome, email, senhaCripto, endereco, telefone, cpf);
-      this.SaveUsers();
-  
-      return this.users[userIndex];
-    } catch (erro) {
-      console.log('Erro ao atualizar usuário', erro);
-      throw erro;
-    }
-  }
-  
-
-
-  getUsers() {
-    try {
-      return this.users
-    } catch (erro) {
-      console.log('erro ao chamar usuário', erro);
-    }
-    return this.users
-  }
+        
 }
 
+    
+
+    async addUser(nome, email, senha, endereco, telefone, cpf){
+        try{ 
+        const cpfunico = this.users.some(user => user.cpf === cpf); //verifica se o cpf ja existe
+        if(cpfunico) {
+            throw new Error('CPF já cadastrado');
+        } //se o cpf ja existe, retorna erro 
+        const senhaCripto = await bcrypt.hash(senha, 10);
+       
+        const resultados = await mysql.execute(
+            `insert into usuarios (nome,email,endereco,telefone,senha,cpf)  
+            Values( ?, ?, ?, ?, ?, ?);`,
+            [nome, email, senhaCripto, endereco, telefone, cpf]
+        )
+        return resultados;
+
+
+
+      } catch (erro) {
+            console.log('erro ao cadastrar o usuario');
+            throw erro; //lança o erro para o controller
+        }
+       
+    }
+
+    getUsers(){
+        try{
+        return this.users
+    } catch (erro) {
+        console.log('erro ao chamar o usuario');
+    }
+        
+    }
+
+    deleteUser(id){
+        try{
+            this.users = this.users.filter(user => user.id !== id);
+            this.saveUsers();
+        }catch(erro){
+            console.log('Erro ao deletar usuário', erro)
+        }
+    }
+
+    async putUser(id, nome, email, senha, endereco, telefone, cpf){
+        try{
+            const senhaCripto = await bcrypt.hash(senha, 10);  
+          const userIndex = this.users.findIndex(user => user.id === id);
+          if(userIndex === -1) throw new Error('Usuário não encontrado');
+          this.users[userIndex] = new User(id, nome, email, senhaCripto, endereco, telefone, cpf);
+          this.SaveUsers();
+          return this.users[userIndex];
+        }catch(erro){
+          console.log('erro ao atualizar usuário', erro);
+
+    }
+}
+}
 module.exports = new userService;
