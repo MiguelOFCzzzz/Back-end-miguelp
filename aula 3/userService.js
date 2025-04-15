@@ -1,7 +1,11 @@
 const User = require("./user");
 const path = require('path'); //modulo para manipular caminhos
 const fs = require('fs'); //modulo para manipular arquivos file system
-const bcrypt = require('bcryptjs'); //modulo para criptografar senha
+const { json } = require("stream/consumers");
+const bcrypt = require('bcryptjs');
+const mysql = require('./mysql');
+
+
 
 class userService {
   constructor() {
@@ -31,70 +35,79 @@ class userService {
     }
   }
 
-
-  SaveUsers() { //função para salvar os arquivos
+  saveUsers() {
     try {
       fs.writeFileSync(this.filePath, JSON.stringify(this.users));
     } catch (erro) {
-      console.log('erro ao salvar o arquivo', erro);
+      console.log('erro ao salvar arquivo')
     }
+
   }
 
 
 
-
-  async addUser(nome, email, senha, endereco, telefone, cpf, cpfexistente) {
+  async addUser(nome, email, senha, endereco, telefone, cpf) {
     try {
-      const cpfexistente = this.users.some(user => user.cpf === cpf);
-      if (cpfexistente) {
-        throw new Error('CPF já cadastrado');
-      }
-      const user = new User(this.nextId++, nome, email, senha, endereco, telefone, cpf,);
-      this.users.push(user);
-      this.SaveUsers();
-      return user;
-    } catch (erro) {
-      console.log('erro ao adicionar um user', erro);
-      throw erro
-
-    }
-  }
-
-
-
-
-  async putUser(id, nome, email, senha, endereco, telefone, cpf) {
-    try {
-      const userIndex = this.users.findIndex(user => user.id === id);
-      if (userIndex === -1) throw new Error('Usuário não encontrado');
-  
-      const cpfexistente = this.users.some(user => user.cpf === cpf && user.id !== id);
-      if (cpfexistente) {
-        throw new Error('CPF já cadastrado');
-      }
-  
       const senhaCripto = await bcrypt.hash(senha, 10);
-  
-      this.users[userIndex] = new User(id, nome, email, senhaCripto, endereco, telefone, cpf);
-      this.SaveUsers();
-  
-      return this.users[userIndex];
-    } catch (erro) {
-      console.log('Erro ao atualizar usuário', erro);
-      throw erro;
-    }
-  }
-  
+      const resultados = await mysql.execute(
+        `insert into usuario (nome, email, endereco, telefone, senha, cpf)  
+            Values( ?, ?, ?, ?, ?, ?);`,
+        [nome, email, endereco, telefone, senhaCripto, cpf]
+      )
+      return resultados;
 
+
+
+    } catch (erro) {
+      console.log('erro ao cadastrar o usuario');
+      throw erro; //lança o erro para o controller
+    }
+
+  }
 
   getUsers() {
     try {
       return this.users
     } catch (erro) {
-      console.log('erro ao chamar usuário', erro);
+      console.log('erro ao chamar o usuario');
     }
-    return this.users
+
+  }
+
+  deleteUser(id) {
+    try {
+      this.users = this.users.filter(user => user.id !== id);
+      this.saveUsers();
+    } catch (erro) {
+      console.log('Erro ao deletar usuário', erro)
+    }
+  }
+
+  async putUser(id, nome, email, senha, endereco, telefone, cpf) {
+    try {
+      const senhaCripto = await bcrypt.hash(senha, 10);
+
+      const resultados = await mysql.execute(
+        `UPDATE usuario
+              SET nome = ?,
+                  email = ?,
+                  endereco = ?,
+                  telefone = ?,
+                  senha = ?,
+                  cpf = ?
+                WHERE idusuario = ?;
+                                            `,
+        [nome, email, endereco, telefone, senhaCripto, cpf, id]
+      )
+      return resultados;
+    } catch (erro) {
+      console.log('erro ao atualizar usuário', erro);
+    }
   }
 }
 
+
 module.exports = new userService;
+
+
+//esse éo certo 
